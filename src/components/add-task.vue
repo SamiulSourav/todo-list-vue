@@ -2,7 +2,7 @@
     import { ref } from 'vue';
     // import tasks from '../App.vue';
 
-    const emit = defineEmits('take-input')
+    const emit = defineEmits(['take-input'])
     const input = ref('');
     function addtask(){
         input.value='';

@@ -1,25 +1,37 @@
 <script setup>
-    import addTask from './components/add-task.vue';
-    import buttonComponent from './components/button-component.vue';
-    import {ref} from 'vue';
+    import AddTask from './components/add-task.vue';
+    import ButtonComponent from './components/button-component.vue';
+    import SimplifyComponent from './components/simplify-component.vue';
+    import {computed, ref} from 'vue';
     let idcount = ref(0);
     const tasks = ref([])
-    const inputText=ref('');
-
-
     let state = ref(1);
-    const init = ref('"There is no task"');
+    const init = ref('There is no task');
     const wrong = ref('');
     const empty = ref('');
 
-    const copyFilteredTask = ref([]);
+    const filteredTask = computed(() => {
+        if(state.value === 1) {
+            return tasks.value;
+        }
+        else if(state.value === 2) {
+            return tasks.value.filter((task) => task.check === true);
+        }
+        else if(state.value === 3) {
+            return tasks.value.filter((task) => task.check === false);
+        }
+    })
+
     function handleInput(input){
         ++idcount.value;
-        let exist = ref(0);
+        let exist = 0;
         for(let i=0;i<tasks.value.length;i++) {
-            if(tasks.value[i].title === input) exist.value = 1;
+            if(tasks.value[i].title === input) {
+                exist = 1;
+                break;
+            }
         }
-        if(exist.value === 1) {
+        if(exist === 1) {
             wrong.value = 'This task is already in the list!';
             setTimeout(() => {
                 wrong.value = ''
@@ -28,12 +40,9 @@
         else {
             wrong.value = '';
             if(input.length !== 0) {
-                const obj=ref({id: idcount.value, check: false, title: input, edit: false});
-                tasks.value.push(obj.value);
+                const obj = {id: idcount.value, check: false, title: input};
+                tasks.value.push(obj);
                 stateChecking();
-                empty.value = '';
-                if(state.value === 1) init.value = '"All tasks are here:"';
-                if(state.value === 3) init.value = '"These tasks are still not completed:"';
             }
             else {
                 empty.value = 'Task name cannot be empty';
@@ -42,96 +51,62 @@
                 }, 1500)
             }
         }
+        console.log(tasks.value);
     }
 
     function updateState(flag){
         state.value = flag.value;
         stateChecking();
+        console.log(state.value, tasks.value);
     }
 
-    function toggle(task){
-        for(let i=0;i<copyFilteredTask.value.length;i++) {
-            if(copyFilteredTask.value[i].id === task.id) {
-                if (copyFilteredTask.value[i].check === true) copyFilteredTask.value[i].check = false;
-                else copyFilteredTask.value[i].check = true;
-            }
-        }
-        // tasks.value = copyFilteredTask.value;
-        console.log(tasks);
-        console.log(copyFilteredTask);
-        stateChecking();
-        console.log('aftercheck',copyFilteredTask.value);
-        console.log('--',state.value);
+    function clear(){
+        tasks.value = tasks.value.filter((task) => task.check === false);
     }
 
-    function filter(filteredTask){
-        console.log(state.value);
-        copyFilteredTask.value = filteredTask.value;
-        stateChecking();
+    function deleteTask(deleteTaskId) {
+        tasks.value = tasks.value.filter((task) => task.id !== deleteTaskId);
     }
-
-    function clear(filteredTask){
-        tasks.value = filteredTask.value;
-        if(state.value === 2) copyFilteredTask.value = [];
-        else copyFilteredTask.value = tasks.value;
-        console.log(tasks);
-    }
-
-    function deleteTask(delTask) {
-        copyFilteredTask.value = tasks.value.filter(task => task.id !== delTask.id);
-        tasks.value = copyFilteredTask.value;
-        stateChecking();
-        if(copyFilteredTask.value.length === 0) init.value = '"There is no task"'
-    }
-
+    
     function stateChecking(){
-        if(state.value === 1) copyFilteredTask.value = tasks.value;
-        else if(state.value === 2) copyFilteredTask.value = tasks.value.filter(task => task.check === true);
-        else if(state.value === 3) copyFilteredTask.value = tasks.value.filter(task => task.check === false);
+        if(state.value === 1) {
+            init.value = 'All tasks are here:';
+        }
+        else if(state.value === 2) {
+             init.value = 'These tasks are already completed:';
+        }
+        else if(state.value === 3) {
+            init.value = 'These tasks are still not completed:';
+        }
+        if(filteredTask.value.length === 0) {
+            init.value = 'There is no task';
+        }
     }
 
-    const inputVal = ref('');
-    function editTask(task){
-        inputVal.value = task.title;
-        task.edit = true;
-    }
-    function editTaskDone(task){
-        task.title = inputVal.value;
-        task.edit=false;
-    }
-
-    function textChange(startText){
-        init.value = startText;
-        if(copyFilteredTask.value.length === 0) init.value = '"There is no task"';
-    }
 
 </script>
 
 <template>
     <main>
-        <div id="container">
+        <div id = "container">
             <h1> Todo List </h1>
-            <addTask @take-input="handleInput" /> 
-<br>
-            <buttonComponent :tasks="tasks" @flag="updateState" @show-all="filter" 
-            @completed="filter" @not-completed="filter" @clear-completed="clear" @text="textChange"/>
-            <br> {{ init }} <br>
+            <AddTask @take-input = "handleInput" /> 
+            <br>
+            <ButtonComponent @flag = "updateState" @clear-completed = "clear"/>
+            <br> 
+            {{ init }} <br>
             {{ wrong }}
             {{ empty }}
             <br> <br>
-
-            <li id="li" v-for="(task) in copyFilteredTask" :key="task.id">
-                <input type="checkbox" class="checkbox" @click="toggle(task)" :checked="task.check">
-                <label v-if="task.edit === false" @dblclick="editTask(task)" :class="{strikethrough: task.check}"> 
-                    {{ task.title }}
-                </label>
-                <span v-if="task.edit">
-                    <input style="padding-left: 5px; margin-left: 10px; margin-right: -45px;" autofocus class="inputtext" type="text" v-model="inputVal" @keyup.enter="editTaskDone(task)" @blur="editTaskDone(task)">
-                </span>
-                <button class="delete" style = "margin-left: 50px;" @click="deleteTask(task)">x</button>
+            <li id="li" v-for = "(task) in filteredTask" :key = "task.id" >
+                <SimplifyComponent 
+                    v-model:title = "task.title"
+                    v-model:check = "task.check"
+                    @delete-id = "deleteTask(task.id)"
+                />
             </li>
 
-            <!-- <br> <br> {{ copyFilteredTask }} -->
+            <!-- <br> <br> {{ tasks }} -->
         </div>
     </main>
     
